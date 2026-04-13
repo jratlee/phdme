@@ -1,0 +1,35 @@
+{
+  "entities": {
+    "NarrativeSite": {
+      "title": "Narrative Site",
+      "description": "A generated interactive narrative from a research paper",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Short ID for the URL" },
+        "title": { "type": "string", "description": "Title of the paper" },
+        "authors": { "type": "array", "items": { "type": "string" }, "description": "Authors of the paper" },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "content": { "type": "string" },
+              "type": { "type": "string", "enum": ["text", "diagram", "quote", "metric"] },
+              "visualData": { "type": "object", "description": "Data for charts or diagrams" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string", "description": "User UID" }
+      },
+      "required": ["id", "title", "sections", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/sites/{siteId}": {
+      "schema": "NarrativeSite",
+      "description": "Collection of generated narrative sites"
+    }
+  }
+}

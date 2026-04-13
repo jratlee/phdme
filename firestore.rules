@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidSite(data) {
+      return data.id is string && 
+             data.title is string && 
+             data.title.size() < 500 &&
+             data.sections is list &&
+             data.sections.size() < 50;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    match /sites/{siteId} {
+      // Anyone can read a site (for sharing via short URL)
+      allow read: if true;
+      
+      // Only authenticated users can create sites
+      allow create: if isAuthenticated() && 
+                      isValidSite(request.resource.data) && 
+                      request.resource.data.createdBy == request.auth.uid;
+      
+      // Only the owner can update or delete their site
+      allow update, delete: if isOwner(resource.data.createdBy) && 
+                               isValidSite(request.resource.data);
+    }
+    
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}
