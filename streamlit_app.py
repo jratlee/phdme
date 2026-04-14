@@ -67,10 +67,21 @@ with st.sidebar:
     st.markdown("---")
     st.info("Upload a research paper and we'll transform it into an elegant narrative.")
 
+    provider = st.selectbox("AI Provider", ["Google Gemini"])
+    api_key_input = st.text_input(
+        "AI API Key",
+        type="password",
+        help="Enter your Google Gemini API key. For Gemini, get a key from https://aistudio.google.com/app/apikey.",
+    )
+    if api_key_input:
+        genai.configure(api_key=api_key_input)
+        api_key = api_key_input
+        api_configured = True
+
     if api_configured:
-        st.success("Using server-side Gemini API key.")
+        st.success("AI API key configured.")
     else:
-        st.warning("No Gemini API key found. Set GOOGLE_API_KEY or GENAI_API_KEY in the environment.")
+        st.warning("Enter a Google Gemini API key or set GOOGLE_API_KEY/GENAI_API_KEY.")
 
     st.markdown("---")
     st.markdown("### Settings")
@@ -95,7 +106,7 @@ def extract_text(uploaded_file):
         return None
 
 def generate_narrative(text, tone):
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('models/gemini-1.5-flash')
     prompt = f"""
     You are an expert science communicator. Transform this research paper into an elegant narrative with a '{tone}' tone.
     
@@ -133,7 +144,7 @@ uploaded_file = st.file_uploader("Choose a file (PDF, DOCX, TXT)", type=["pdf", 
 
 if uploaded_file is not None:
     if not api_configured:
-        st.warning("Please set the Gemini API key in GOOGLE_API_KEY or GENAI_API_KEY before generating a narrative.")
+        st.warning("Please enter your Gemini API key above or set GOOGLE_API_KEY/GENAI_API_KEY in the environment.")
     else:
         if st.button("Generate Narrative"):
             with st.spinner("Analyzing paper and crafting your story..."):
