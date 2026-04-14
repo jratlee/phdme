@@ -101,7 +101,12 @@ def generate_narrative(text, tone):
     - sections: List of objects with {{'title': str, 'content': str, 'type': 'text'|'metric'|'quote', 'visualData': dict}}.
     """
     
-    response = model.generate_content(prompt)
+    try:
+        response = model.generate_content(prompt)
+    except Exception as e:
+        st.error(f"AI generation failed: {e}")
+        return None
+
     try:
         # Clean response if it contains markdown code blocks
         content = response.text.strip()
