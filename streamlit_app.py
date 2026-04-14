@@ -6,6 +6,13 @@ import docx2txt
 from pypdf import PdfReader
 import json
 
+# --- Gemini API Key ---
+api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GENAI_API_KEY")
+api_configured = False
+if api_key:
+    genai.configure(api_key=api_key)
+    api_configured = True
+
 # --- Page Config ---
 st.set_page_config(
     page_title="PhDMe | Reimagining Research",
@@ -59,11 +66,12 @@ with st.sidebar:
     st.title("φ PhDMe")
     st.markdown("---")
     st.info("Upload a research paper and we'll transform it into an elegant narrative.")
-    
-    api_key = st.text_input("Gemini API Key", type="password", help="Get your key at https://aistudio.google.com/app/apikey")
-    if api_key:
-        genai.configure(api_key=api_key)
-    
+
+    if api_configured:
+        st.success("Using server-side Gemini API key.")
+    else:
+        st.warning("No Gemini API key found. Set GOOGLE_API_KEY or GENAI_API_KEY in the environment.")
+
     st.markdown("---")
     st.markdown("### Settings")
     narrative_tone = st.selectbox("Narrative Tone", ["Magazine Feature", "Academic Summary", "Creative Story", "Technical Deep-Dive"])
@@ -124,8 +132,8 @@ st.subheader("Turn dense papers into interactive stories.")
 uploaded_file = st.file_uploader("Choose a file (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 
 if uploaded_file is not None:
-    if not api_key:
-        st.warning("Please enter your Gemini API Key in the sidebar to proceed.")
+    if not api_configured:
+        st.warning("Please set the Gemini API key in GOOGLE_API_KEY or GENAI_API_KEY before generating a narrative.")
     else:
         if st.button("Generate Narrative"):
             with st.spinner("Analyzing paper and crafting your story..."):
