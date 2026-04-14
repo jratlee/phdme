@@ -13,6 +13,13 @@ if api_key:
     genai.configure(api_key=api_key)
     api_configured = True
 
+if "api_key_input" not in st.session_state:
+    st.session_state.api_key_input = api_key or ""
+if "supported_models" not in st.session_state:
+    st.session_state.supported_models = []
+if "model_choice" not in st.session_state:
+    st.session_state.model_choice = None
+
 # --- Page Config ---
 st.set_page_config(
     page_title="PhDMe | Reimagining Research",
@@ -60,43 +67,6 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-
-# --- Sidebar ---
-with st.sidebar:
-    st.title("φ PhDMe")
-    st.markdown("---")
-    st.info("Upload a research paper and we'll transform it into an elegant narrative.")
-
-    provider = st.selectbox("AI Provider", ["Google Gemini"])
-    api_key_input = st.text_input(
-        "AI API Key",
-        type="password",
-        help="Enter your Google Gemini API key. For Gemini, get a key from https://aistudio.google.com/app/apikey.",
-    )
-    if api_key_input:
-        genai.configure(api_key=api_key_input)
-        api_key = api_key_input
-        api_configured = True
-
-    model_choice = None
-    supported_models = []
-    if api_configured:
-        supported_models = get_supported_models()
-        if supported_models:
-            default_index = supported_models.index("models/gemini-1.5-flash") if "models/gemini-1.5-flash" in supported_models else 0
-            model_choice = st.selectbox("AI Model", supported_models, index=default_index)
-            st.success("AI API key configured. Select a model for generation.")
-        else:
-            st.warning("AI API key is configured, but no supported generation models were found.")
-    else:
-        st.warning("Enter a Google Gemini API key or set GOOGLE_API_KEY/GENAI_API_KEY.")
-
-    st.markdown("---")
-    st.markdown("### Settings")
-    narrative_tone = st.selectbox("Narrative Tone", ["Magazine Feature", "Academic Summary", "Creative Story", "Technical Deep-Dive"])
-    
-    st.markdown("---")
-    st.caption("PhDMe • 2026")
 
 # --- Helper Functions ---
 def extract_text(uploaded_file):
@@ -158,22 +128,73 @@ def generate_narrative(text, tone, model_name):
         st.error(f"Failed to parse AI response: {e}")
         return None
 
+# --- Sidebar ---
+with st.sidebar:
+    st.title("φ PhDMe")
+    st.markdown("---")
+    st.info("Upload a research paper and we'll transform it into an elegant narrative.")
+
+    provider = st.selectbox("AI Provider", ["Google Gemini"])
+    api_key_input = st.text_input(
+        "AI API Key",
+        value=st.session_state.api_key_input,
+        type="password",
+        help="Enter your Google Gemini API key. For Gemini, get a key from https://aistudio.google.com/app/apikey.",
+    )
+    st.session_state.api_key_input = api_key_input
+
+    if api_key_input:
+        genai.configure(api_key=api_key_input)
+        api_key = api_key_input
+        api_configured = True
+
+    if api_configured:
+        st.session_state.supported_models = get_supported_models()
+        if st.session_state.supported_models:
+            if st.session_state.model_choice not in st.session_state.supported_models:
+                default_index = st.session_state.supported_models.index("models/gemini-1.5-flash") if "models/gemini-1.5-flash" in st.session_state.supported_models else 0
+                st.session_state.model_choice = st.session_state.supported_models[default_index]
+
+            st.session_state.model_choice = st.selectbox(
+                "AI Model",
+                st.session_state.supported_models,
+                index=st.session_state.supported_models.index(st.session_state.model_choice),
+            )
+            st.success("AI API key configured. Select a model for generation.")
+        else:
+            st.session_state.model_choice = None
+            st.warning("AI API key is configured, but no supported generation models were found.")
+    else:
+        st.session_state.supported_models = []
+        st.session_state.model_choice = None
+        st.warning("Enter a Google Gemini API key or set GOOGLE_API_KEY/GENAI_API_KEY.")
+
+    st.markdown("---")
+    st.markdown("### Settings")
+    narrative_tone = st.selectbox("Narrative Tone", ["Magazine Feature", "Academic Summary", "Creative Story", "Technical Deep-Dive"])
+    
+    st.markdown("---")
+    st.caption("PhDMe • 2026")
+
 # --- Main UI ---
 st.title("Reimagine Your Research")
 st.subheader("Turn dense papers into interactive stories.")
 
 uploaded_file = st.file_uploader("Choose a file (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 
+generate_disabled = not api_configured or not st.session_state.supported_models
 if uploaded_file is not None:
     if not api_configured:
         st.warning("Please enter your Gemini API key above or set GOOGLE_API_KEY/GENAI_API_KEY in the environment.")
+    elif not st.session_state.supported_models:
+        st.warning("Your API key is valid, but no compatible Gemini models were found.")
     else:
-        if st.button("Generate Narrative"):
+        if st.button("Generate Narrative", disabled=generate_disabled):
             with st.spinner("Analyzing paper and crafting your story..."):
                 text = extract_text(uploaded_file)
                 if text:
-                    if model_choice:
-                        narrative = generate_narrative(text, narrative_tone, model_choice)
+                    if st.session_state.model_choice:
+                        narrative = generate_narrative(text, narrative_tone, st.session_state.model_choice)
                         if narrative:
                             st.session_state.narrative = narrative
                             st.success("Narrative generated!")
