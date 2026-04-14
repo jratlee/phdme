@@ -78,8 +78,16 @@ with st.sidebar:
         api_key = api_key_input
         api_configured = True
 
+    model_choice = None
+    supported_models = []
     if api_configured:
-        st.success("AI API key configured.")
+        supported_models = get_supported_models()
+        if supported_models:
+            default_index = supported_models.index("models/gemini-1.5-flash") if "models/gemini-1.5-flash" in supported_models else 0
+            model_choice = st.selectbox("AI Model", supported_models, index=default_index)
+            st.success("AI API key configured. Select a model for generation.")
+        else:
+            st.warning("AI API key is configured, but no supported generation models were found.")
     else:
         st.warning("Enter a Google Gemini API key or set GOOGLE_API_KEY/GENAI_API_KEY.")
 
@@ -105,8 +113,22 @@ def extract_text(uploaded_file):
     else:
         return None
 
-def generate_narrative(text, tone):
-    model = genai.GenerativeModel('models/gemini-1.5-flash')
+
+def get_supported_models():
+    try:
+        models = []
+        for model in genai.list_models(page_size=100):
+            supported = getattr(model, "supported_generation_methods", [])
+            if "generateContent" in supported or "generate_content" in supported:
+                models.append(model.name)
+        return models
+    except Exception as e:
+        st.error(f"Could not list available models: {e}")
+        return []
+
+
+def generate_narrative(text, tone, model_name):
+    model = genai.GenerativeModel(model_name)
     prompt = f"""
     You are an expert science communicator. Transform this research paper into an elegant narrative with a '{tone}' tone.
     
@@ -150,10 +172,13 @@ if uploaded_file is not None:
             with st.spinner("Analyzing paper and crafting your story..."):
                 text = extract_text(uploaded_file)
                 if text:
-                    narrative = generate_narrative(text, narrative_tone)
-                    if narrative:
-                        st.session_state.narrative = narrative
-                        st.success("Narrative generated!")
+                    if model_choice:
+                        narrative = generate_narrative(text, narrative_tone, model_choice)
+                        if narrative:
+                            st.session_state.narrative = narrative
+                            st.success("Narrative generated!")
+                    else:
+                        st.error("No compatible model selected. Check your API key and model list.")
                 else:
                     st.error("Could not extract text from the file.")
 
