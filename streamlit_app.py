@@ -52,7 +52,7 @@ st.markdown("""
         border-left: 5px solid #C5A059;
     }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar:
