@@ -1,17 +1,57 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import os
+import re
 from io import BytesIO
 import docx2txt
 from pypdf import PdfReader
 import json
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()  # load a local .env file if present (no-op otherwise)
+except ImportError:
+    # python-dotenv is optional; the app still works with real env vars.
+    pass
+
+
+def make_client(key):
+    """Create a google-genai Client, returning None on failure."""
+    if not key:
+        return None
+    try:
+        return genai.Client(api_key=key)
+    except Exception as e:
+        st.error(f"Could not initialize the Gemini client: {e}")
+        return None
+
+
+def get_secret(*names):
+    """Return the first key found in st.secrets, then in environment variables.
+
+    st.secrets is used for Streamlit Cloud deployments (.streamlit/secrets.toml),
+    while environment variables / .env support local runs.
+    """
+    for name in names:
+        try:
+            if name in st.secrets:
+                return st.secrets[name]
+        except Exception:
+            # st.secrets raises if no secrets file exists; fall back to env vars.
+            pass
+    for name in names:
+        value = os.getenv(name)
+        if value:
+            return value
+    return None
+
+
 # --- Gemini API Key ---
-api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GENAI_API_KEY")
-api_configured = False
-if api_key:
-    genai.configure(api_key=api_key)
-    api_configured = True
+api_key = get_secret("GOOGLE_API_KEY", "GENAI_API_KEY", "GEMINI_API_KEY")
+client = make_client(api_key)
+api_configured = client is not None
 
 if "api_key_input" not in st.session_state:
     st.session_state.api_key_input = api_key or ""
@@ -70,63 +110,111 @@ st.markdown("""
 
 # --- Helper Functions ---
 def extract_text(uploaded_file):
-    if uploaded_file.type == "application/pdf":
-        reader = PdfReader(uploaded_file)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
-        return text
-    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return docx2txt.process(uploaded_file)
-    elif uploaded_file.type == "text/plain":
-        return str(uploaded_file.read(), "utf-8")
-    else:
+    """Extract plain text from an uploaded PDF, DOCX, or TXT file."""
+    file_type = uploaded_file.type
+    name = (uploaded_file.name or "").lower()
+
+    try:
+        if file_type == "application/pdf" or name.endswith(".pdf"):
+            reader = PdfReader(uploaded_file)
+            pages = [(page.extract_text() or "") for page in reader.pages]
+            return "\n".join(pages).strip() or None
+
+        if (
+            file_type
+            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            or name.endswith(".docx")
+        ):
+            # docx2txt needs a file path or a seekable file-like object.
+            uploaded_file.seek(0)
+            return docx2txt.process(BytesIO(uploaded_file.read())) or None
+
+        if file_type == "text/plain" or name.endswith(".txt"):
+            uploaded_file.seek(0)
+            return uploaded_file.read().decode("utf-8", errors="replace") or None
+    except Exception as e:  # surface parsing errors instead of crashing
+        st.error(f"Failed to read the file: {e}")
         return None
 
+    return None
 
-def get_supported_models():
+
+def get_supported_models(client):
+    """Return model names that support content generation."""
+    if client is None:
+        return []
     try:
         models = []
-        for model in genai.list_models(page_size=100):
-            supported = getattr(model, "supported_generation_methods", [])
-            if "generateContent" in supported or "generate_content" in supported:
-                models.append(model.name)
+        for model in client.models.list():
+            actions = getattr(model, "supported_actions", None) or []
+            # Some models omit supported_actions; assume they can generate.
+            if not actions or "generateContent" in actions:
+                if model.name:
+                    models.append(model.name)
         return models
     except Exception as e:
         st.error(f"Could not list available models: {e}")
         return []
 
 
-def generate_narrative(text, tone, model_name):
-    model = genai.GenerativeModel(model_name)
+def _parse_json_response(raw):
+    """Best-effort extraction of a JSON object from a model response."""
+    if not raw:
+        return None
+    content = raw.strip()
+
+    # Strip ```json ... ``` or ``` ... ``` fences if present.
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", content, re.DOTALL)
+    if fence:
+        content = fence.group(1).strip()
+
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        # Fall back to the first {...} block found in the text.
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                return None
+    return None
+
+
+def generate_narrative(client, text, tone, model_name):
+    if client is None:
+        st.error("Gemini client is not configured.")
+        return None
+
     prompt = f"""
     You are an expert science communicator. Transform this research paper into an elegant narrative with a '{tone}' tone.
-    
+
     Paper Text:
     {text[:30000]}
-    
-    Return a JSON object with:
+
+    Return ONLY a JSON object (no prose, no markdown) with:
     - title: A compelling title.
     - authors: List of authors.
     - abstract: A brief summary.
-    - sections: List of objects with {{'title': str, 'content': str, 'type': 'text'|'metric'|'quote', 'visualData': dict}}.
+    - sections: List of objects with {{"title": str, "content": str, "type": "text"|"metric"|"quote", "visualData": dict}}.
     """
-    
+
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
     except Exception as e:
         st.error(f"AI generation failed: {e}")
         return None
 
-    try:
-        # Clean response if it contains markdown code blocks
-        content = response.text.strip()
-        if content.startswith("```json"):
-            content = content[7:-3]
-        return json.loads(content)
-    except Exception as e:
-        st.error(f"Failed to parse AI response: {e}")
-        return None
+    narrative = _parse_json_response(getattr(response, "text", None))
+    if narrative is None:
+        st.error("Failed to parse the AI response as JSON. Try again or pick a different model.")
+    return narrative
 
 # --- Sidebar ---
 with st.sidebar:
@@ -144,15 +232,21 @@ with st.sidebar:
     st.session_state.api_key_input = api_key_input
 
     if api_key_input:
-        genai.configure(api_key=api_key_input)
+        client = make_client(api_key_input)
         api_key = api_key_input
-        api_configured = True
+        api_configured = client is not None
 
     if api_configured:
-        st.session_state.supported_models = get_supported_models()
+        st.session_state.supported_models = get_supported_models(client)
         if st.session_state.supported_models:
             if st.session_state.model_choice not in st.session_state.supported_models:
-                default_index = st.session_state.supported_models.index("models/gemini-1.5-flash") if "models/gemini-1.5-flash" in st.session_state.supported_models else 0
+                preferred = next(
+                    (m for m in st.session_state.supported_models if "flash" in m.lower()),
+                    None,
+                )
+                default_index = (
+                    st.session_state.supported_models.index(preferred) if preferred else 0
+                )
                 st.session_state.model_choice = st.session_state.supported_models[default_index]
 
             st.session_state.model_choice = st.selectbox(
@@ -194,7 +288,9 @@ if uploaded_file is not None:
                 text = extract_text(uploaded_file)
                 if text:
                     if st.session_state.model_choice:
-                        narrative = generate_narrative(text, narrative_tone, st.session_state.model_choice)
+                        narrative = generate_narrative(
+                            client, text, narrative_tone, st.session_state.model_choice
+                        )
                         if narrative:
                             st.session_state.narrative = narrative
                             st.success("Narrative generated!")
@@ -215,20 +311,26 @@ if "narrative" in st.session_state:
     
     for section in n.get('sections', []):
         with st.container():
-            st.markdown(f"### {section['title']}")
-            
-            if section['type'] == 'quote':
-                st.markdown(f"> *{section['content']}*")
-            elif section['type'] == 'metric':
+            st.markdown(f"### {section.get('title', 'Untitled Section')}")
+
+            section_type = section.get('type', 'text')
+            content = section.get('content', '')
+
+            if section_type == 'quote':
+                st.markdown(f"> *{content}*")
+            elif section_type == 'metric':
                 col1, col2 = st.columns([2, 1])
                 with col1:
-                    st.write(section['content'])
+                    st.write(content)
                 with col2:
-                    data = section.get('visualData', {})
-                    st.metric(label=data.get('label', 'Metric'), value=f"{data.get('value', '')} {data.get('unit', '')}")
+                    data = section.get('visualData') or {}
+                    st.metric(
+                        label=data.get('label', 'Metric'),
+                        value=f"{data.get('value', '')} {data.get('unit', '')}".strip(),
+                    )
             else:
-                st.write(section['content'])
-            
+                st.write(content)
+
             st.markdown("---")
 
     # Share Button (Streamlit specific)

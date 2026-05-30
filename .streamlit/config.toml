@@ -1,0 +1,14 @@
+# Streamlit configuration (safe to commit — contains no secrets).
+
+[theme]
+primaryColor = "#C5A059"
+backgroundColor = "#F9F8F4"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1F2937"
+font = "serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

@@ -12,6 +12,21 @@ dist
 dist-ssr
 *.local
 
+# Environment files (never commit real keys)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Streamlit secrets (never commit real keys)
+.streamlit/secrets.toml
+!.streamlit/secrets.toml.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

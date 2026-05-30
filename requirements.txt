@@ -1,4 +1,5 @@
-streamlit
-google-generativeai
-pypdf
-docx2txt
+streamlit>=1.32
+google-genai>=1.0
+pypdf>=4.0
+docx2txt>=0.8
+python-dotenv>=1.0
