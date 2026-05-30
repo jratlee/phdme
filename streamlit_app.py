@@ -53,8 +53,6 @@ api_key = get_secret("GOOGLE_API_KEY", "GENAI_API_KEY", "GEMINI_API_KEY")
 client = make_client(api_key)
 api_configured = client is not None
 
-if "api_key_input" not in st.session_state:
-    st.session_state.api_key_input = api_key or ""
 if "supported_models" not in st.session_state:
     st.session_state.supported_models = []
 if "model_choice" not in st.session_state:
@@ -225,12 +223,15 @@ with st.sidebar:
     provider = st.selectbox("AI Provider", ["Google Gemini"])
     api_key_input = st.text_input(
         "AI API Key",
-        value=st.session_state.api_key_input,
         type="password",
-        help="Enter your Google Gemini API key. For Gemini, get a key from https://aistudio.google.com/app/apikey.",
+        help="Enter your Google Gemini API key. Get one at https://aistudio.google.com/apikey.",
     )
-    st.session_state.api_key_input = api_key_input
+    st.caption(
+        "🔒 Your API key is used only to make requests during this browser session. "
+        "It is **never** written to disk, logged, or stored after the session ends."
+    )
 
+    # Use the typed key for this run only; never persist it in session_state.
     if api_key_input:
         client = make_client(api_key_input)
         api_key = api_key_input
@@ -268,11 +269,33 @@ with st.sidebar:
     narrative_tone = st.selectbox("Narrative Tone", ["Magazine Feature", "Academic Summary", "Creative Story", "Technical Deep-Dive"])
     
     st.markdown("---")
-    st.caption("PhDMe • 2026")
+    st.markdown(
+        "[📖 Read the docs](https://github.com/jratlee/phdme/blob/main/README.md)"
+    )
+    st.caption("PhDMe • © 2026 False Dawn Industries")
 
 # --- Main UI ---
 st.title("Reimagine Your Research")
 st.subheader("Turn dense papers into interactive stories.")
+
+with st.expander("ℹ️ How it works", expanded=False):
+    st.markdown(
+        """
+        **PhDMe** transforms a dense research paper into an elegant, magazine-style narrative.
+
+        1. **Add your Gemini API key** in the sidebar (or set it via secrets / environment).
+        2. **Upload** a `PDF`, `DOCX`, or `TXT` file. Text is extracted locally in your browser session.
+        3. **Pick a tone** and click **Generate Narrative**. The text is sent to Google Gemini,
+           which returns a structured story (title, abstract, and sections).
+        4. **Read & share** the rendered narrative.
+
+        🔒 **Privacy:** Your API key and uploaded document are processed only for the current
+        session. Nothing is written to disk, logged, or retained after your session ends.
+
+        📖 Full documentation, deployment steps, and source:
+        [README on GitHub](https://github.com/jratlee/phdme/blob/main/README.md).
+        """
+    )
 
 uploaded_file = st.file_uploader("Choose a file (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 
@@ -335,3 +358,12 @@ if "narrative" in st.session_state:
 
     # Share Button (Streamlit specific)
     st.button("Share Link", on_click=lambda: st.toast("Copy the URL from your browser to share!"))
+
+# --- Footer / Attribution ---
+st.markdown("---")
+st.caption(
+    "© 2026 False Dawn Industries. The Systems Dynamics Engine is a creation of "
+    "False Dawn Industries. This project is provided under the MIT License and retains "
+    "required attribution for any third-party MIT-licensed components. "
+    "[Documentation](https://github.com/jratlee/phdme/blob/main/README.md)"
+)

@@ -153,6 +153,13 @@ To keep the project secure, make sure you:
 
 ---
 
-## 📄 License
+## 📄 License & Attribution
 
-See [LICENSE](LICENSE).
+© 2026 False Dawn Industries. The Systems Dynamics Engine is a creation of False Dawn Industries.
+This project is provided under the MIT License and retains required attribution for any third-party
+MIT-licensed components.
+
+See [LICENSE](LICENSE) for the full text.
+
+> **Privacy:** The Streamlit app uses your Gemini API key only to make requests during your active
+> session. It is never written to disk, logged, or retained after the session ends.
