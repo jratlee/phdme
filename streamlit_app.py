@@ -362,7 +362,7 @@ if "narrative" in st.session_state:
 # --- Footer / Attribution ---
 st.markdown("---")
 st.caption(
-    "© 2026 False Dawn Industries. The Systems Dynamics Engine is a creation of "
+    "© 2026 False Dawn Industries. PhDMe is a creation of "
     "False Dawn Industries. This project is provided under the MIT License and retains "
     "required attribution for any third-party MIT-licensed components. "
     "[Documentation](https://github.com/jratlee/phdme/blob/main/README.md)"
