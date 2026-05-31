@@ -1,24 +1,22 @@
-# φ PhDMe — Reimagining Research
+# φ PhDMe - Reimagining Research
 
 > Upload a research paper and watch it transformed into an elegant, interactive narrative site.
 
 PhDMe takes a dense PDF or Word document and uses Google's Gemini models to rewrite it as a
-high-end, magazine-style story (think *Nature*, *Wired*, or *National Geographic*) — complete with
+high-end, magazine-style story (think *Nature*, *Wired*, or *National Geographic*) - complete with
 accessible explanations, pull quotes, metrics, and visual diagrams. Generated sites can be saved,
 shared via a permalink, and revisited later.
-
-🔗 **View in AI Studio:** https://ai.studio/apps/709d0739-58ff-4276-b71d-5e278134952d
 
 ---
 
 ## ✨ Features
 
-- **AI narrative generation** — Gemini reshapes papers into 5–8 reader-friendly sections.
-- **Rich document parsing** — Accepts PDF (`pdfjs-dist`) and DOCX (`mammoth`) uploads.
-- **Interactive visuals** — 3D scenes (`react-three-fiber` / `drei`) and animated diagrams.
-- **Shareable sites** — Each generated narrative gets a short ID and a persistent URL.
-- **Auth & storage** — Google sign-in and Firestore persistence via Firebase.
-- **Two ways to run** — A React + Vite single-page app, plus a lightweight Streamlit prototype.
+- **AI narrative generation** - Gemini reshapes papers into 5–8 reader-friendly sections.
+- **Rich document parsing** - Accepts PDF (`pdfjs-dist`) and DOCX (`mammoth`) uploads.
+- **Interactive visuals** - 3D scenes (`react-three-fiber` / `drei`) and animated diagrams.
+- **Shareable sites** - Each generated narrative gets a short ID and a persistent URL.
+- **Auth & storage** - Google sign-in and Firestore persistence via Firebase.
+- **Two ways to run** - A React + Vite single-page app, plus a lightweight Streamlit prototype.
 
 ---
 
