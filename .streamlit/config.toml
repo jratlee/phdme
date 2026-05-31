@@ -9,6 +9,15 @@ font = "serif"
 
 [server]
 headless = true
+# Security: keep CORS and XSRF protection ON for production deployments.
+enableCORS = true
+enableXsrfProtection = true
+# Cap uploads to match MAX_FILE_BYTES in streamlit_app.py (megabytes).
+maxUploadSize = 15
 
 [browser]
 gatherUsageStats = false
+
+[client]
+# Don't leak Python tracebacks to end users in production.
+showErrorDetails = false

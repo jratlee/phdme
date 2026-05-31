@@ -1,5 +1,6 @@
-streamlit>=1.32
-google-genai>=1.0
-pypdf>=4.0
-docx2txt>=0.8
-python-dotenv>=1.0
+# Pinned for reproducible production deploys. Bump versions deliberately.
+streamlit==1.58.0
+google-genai==2.7.0
+pypdf==6.12.2
+docx2txt==0.9
+python-dotenv==1.2.2

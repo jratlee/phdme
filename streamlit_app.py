@@ -3,6 +3,7 @@ from google import genai
 from google.genai import types
 import os
 import re
+import logging
 from io import BytesIO
 import docx2txt
 from pypdf import PdfReader
@@ -16,6 +17,18 @@ except ImportError:
     # python-dotenv is optional; the app still works with real env vars.
     pass
 
+# --- Production constants ---
+# Hard limits guard against memory exhaustion and abuse in a public deployment.
+MAX_FILE_BYTES = 15 * 1024 * 1024  # 15 MB upload cap (also enforced server-side).
+MAX_PROMPT_CHARS = 30_000  # Characters of paper text sent to the model.
+
+# Structured logging that never records secrets or document contents.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("phdme")
+
 
 def make_client(key):
     """Create a google-genai Client, returning None on failure."""
@@ -23,8 +36,9 @@ def make_client(key):
         return None
     try:
         return genai.Client(api_key=key)
-    except Exception as e:
-        st.error(f"Could not initialize the Gemini client: {e}")
+    except Exception as e:  # noqa: BLE001 - surface a friendly error, log details
+        logger.warning("Failed to initialize Gemini client: %s", type(e).__name__)
+        st.error("Could not initialize the Gemini client. Check that your API key is valid.")
         return None
 
 
@@ -108,13 +122,30 @@ st.markdown("""
 
 # --- Helper Functions ---
 def extract_text(uploaded_file):
-    """Extract plain text from an uploaded PDF, DOCX, or TXT file."""
+    """Extract plain text from an uploaded PDF, DOCX, or TXT file.
+
+    Enforces a maximum file size and handles encrypted/corrupt files gracefully
+    so a malicious or malformed upload cannot crash or overload the app.
+    """
+    # Enforce the size cap defensively (Streamlit also enforces it server-side).
+    size = getattr(uploaded_file, "size", None)
+    if size is not None and size > MAX_FILE_BYTES:
+        st.error(
+            f"File is too large ({size / 1_048_576:.1f} MB). "
+            f"The maximum is {MAX_FILE_BYTES // 1_048_576} MB."
+        )
+        return None
+
     file_type = uploaded_file.type
     name = (uploaded_file.name or "").lower()
 
     try:
         if file_type == "application/pdf" or name.endswith(".pdf"):
+            uploaded_file.seek(0)
             reader = PdfReader(uploaded_file)
+            if getattr(reader, "is_encrypted", False):
+                st.error("This PDF is password-protected. Please upload an unlocked copy.")
+                return None
             pages = [(page.extract_text() or "") for page in reader.pages]
             return "\n".join(pages).strip() or None
 
@@ -130,11 +161,13 @@ def extract_text(uploaded_file):
         if file_type == "text/plain" or name.endswith(".txt"):
             uploaded_file.seek(0)
             return uploaded_file.read().decode("utf-8", errors="replace") or None
-    except Exception as e:  # surface parsing errors instead of crashing
-        st.error(f"Failed to read the file: {e}")
-        return None
 
-    return None
+        st.error("Unsupported file type. Please upload a PDF, DOCX, or TXT file.")
+        return None
+    except Exception as e:  # noqa: BLE001 - never leak internals to the user
+        logger.warning("Failed to parse upload (%s): %s", name or "unnamed", type(e).__name__)
+        st.error("Failed to read the file. It may be corrupt or in an unsupported format.")
+        return None
 
 
 def get_supported_models(client):
@@ -150,8 +183,9 @@ def get_supported_models(client):
                 if model.name:
                     models.append(model.name)
         return models
-    except Exception as e:
-        st.error(f"Could not list available models: {e}")
+    except Exception as e:  # noqa: BLE001 - keep API errors out of the UI text
+        logger.warning("Could not list models: %s", type(e).__name__)
+        st.error("Could not list available models. Verify your API key and try again.")
         return []
 
 
@@ -184,11 +218,18 @@ def generate_narrative(client, text, tone, model_name):
         st.error("Gemini client is not configured.")
         return None
 
+    paper_text = text[:MAX_PROMPT_CHARS]
+    if len(text) > MAX_PROMPT_CHARS:
+        st.info(
+            f"Paper is long; using the first {MAX_PROMPT_CHARS:,} characters "
+            "for the narrative."
+        )
+
     prompt = f"""
     You are an expert science communicator. Transform this research paper into an elegant narrative with a '{tone}' tone.
 
     Paper Text:
-    {text[:30000]}
+    {paper_text}
 
     Return ONLY a JSON object (no prose, no markdown) with:
     - title: A compelling title.
@@ -205,8 +246,9 @@ def generate_narrative(client, text, tone, model_name):
                 response_mime_type="application/json",
             ),
         )
-    except Exception as e:
-        st.error(f"AI generation failed: {e}")
+    except Exception as e:  # noqa: BLE001 - friendly message, log the cause
+        logger.warning("Generation failed on model %s: %s", model_name, type(e).__name__)
+        st.error("AI generation failed. Please try again or select a different model.")
         return None
 
     narrative = _parse_json_response(getattr(response, "text", None))
@@ -297,7 +339,11 @@ with st.expander("ℹ️ How it works", expanded=False):
         """
     )
 
-uploaded_file = st.file_uploader("Choose a file (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
+uploaded_file = st.file_uploader(
+    "Choose a file (PDF, DOCX, TXT)",
+    type=["pdf", "docx", "txt"],
+    help=f"Maximum file size: {MAX_FILE_BYTES // 1_048_576} MB.",
+)
 
 generate_disabled = not api_configured or not st.session_state.supported_models
 if uploaded_file is not None:
