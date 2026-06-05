@@ -1,6 +1,6 @@
 # φ PhDMe: Reimagining Research
 
-**In plain English:** Ever try to read an academic paper and wish it was written like a cool magazine article instead? PhDMe takes boring, dense PDFs and uses AI to rewrite them into interactive, easy-to-read stories with quotes, metrics, and simple explanations.
+Ever try to read an academic paper and wish it was written like a cool magazine article instead? PhDMe takes boring, dense PDFs and uses AI to rewrite them into interactive, easy-to-read stories with quotes, metrics, and simple explanations.
 
 ---
 
