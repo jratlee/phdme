@@ -8,7 +8,7 @@ Ever try to read an academic paper and wish it was written like a cool magazine 
 
 PhDMe takes a dense PDF or Word document and uses Google's Gemini models to rewrite it as a
 high-end, magazine-style story (think *Nature*, *Wired*, or *National Geographic*) with
-accessible explanations, pull quotes, and metrics — all rendered in an elegant Streamlit app.
+accessible explanations, pull quotes, and metrics all rendered in an elegant Streamlit app.
 
 ---
 
