@@ -170,13 +170,14 @@ def extract_text(uploaded_file):
         return None
 
 
-def get_supported_models(client):
+@st.cache_data(ttl=300)
+def get_supported_models(_client):
     """Return model names that support content generation."""
-    if client is None:
+    if _client is None:
         return []
     try:
         models = []
-        for model in client.models.list():
+        for model in _client.models.list():
             actions = getattr(model, "supported_actions", None) or []
             # Some models omit supported_actions; assume they can generate.
             if not actions or "generateContent" in actions:
@@ -345,6 +346,12 @@ uploaded_file = st.file_uploader(
     help=f"Maximum file size: {MAX_FILE_BYTES // 1_048_576} MB.",
 )
 
+# Attribution visible immediately
+st.caption(
+    "© 2026 False Dawn Industries. Provided under the MIT License. "
+    "[Documentation & License](https://github.com/jratlee/phdme/blob/main/README.md)"
+)
+
 generate_disabled = not api_configured or not st.session_state.supported_models
 if uploaded_file is not None:
     if not api_configured:
@@ -404,12 +411,3 @@ if "narrative" in st.session_state:
 
     # Share Button (Streamlit specific)
     st.button("Share Link", on_click=lambda: st.toast("Copy the URL from your browser to share!"))
-
-# --- Footer / Attribution ---
-st.markdown("---")
-st.caption(
-    "© 2026 False Dawn Industries. PhDMe is a creation of "
-    "False Dawn Industries. This project is provided under the MIT License and retains "
-    "required attribution for any third-party MIT-licensed components. "
-    "[Documentation](https://github.com/jratlee/phdme/blob/main/README.md)"
-)

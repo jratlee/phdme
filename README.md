@@ -1,5 +1,9 @@
 # φ PhDMe: Reimagining Research
 
+**In plain English:** Ever try to read an academic paper and wish it was written like a cool magazine article instead? PhDMe takes boring, dense PDFs and uses AI to rewrite them into interactive, easy-to-read stories with quotes, metrics, and simple explanations.
+
+---
+
 > Upload a research paper and watch it transformed into an elegant, interactive narrative site.
 
 PhDMe takes a dense PDF or Word document and uses Google's Gemini models to rewrite it as a
@@ -8,7 +12,7 @@ accessible explanations, pull quotes, and metrics — all rendered in an elegant
 
 ---
 
-## ✨ Features
+## Features
 
 - AI narrative generation: Gemini reshapes papers into reader-friendly sections.
 - Document parsing: accepts PDF, DOCX, and TXT uploads, extracted in-session.
@@ -18,7 +22,7 @@ accessible explanations, pull quotes, and metrics — all rendered in an elegant
 
 ---
 
-## 🧱 Tech Stack
+## Tech Stack
 
 | Layer    | Technology                          |
 | -------- | ----------------------------------- |
@@ -29,7 +33,7 @@ accessible explanations, pull quotes, and metrics — all rendered in an elegant
 
 ---
 
-## 🐍 Run Locally
+## Run Locally
 
 A single Python interface lives in [`streamlit_app.py`](streamlit_app.py).
 
@@ -48,7 +52,7 @@ A single Python interface lives in [`streamlit_app.py`](streamlit_app.py).
    streamlit run streamlit_app.py
    ```
 
-### ☁️ Deploy to Streamlit Community Cloud
+### Deploy to Streamlit Community Cloud
 
 1. Push this repo to GitHub.
 2. On [share.streamlit.io](https://share.streamlit.io), create an app pointing to
@@ -64,7 +68,7 @@ A single Python interface lives in [`streamlit_app.py`](streamlit_app.py).
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 streamlit_app.py              # The Streamlit application (UI + parsing + Gemini)
@@ -77,7 +81,7 @@ requirements.txt              # Pinned Python dependencies
 
 ---
 
-## 🔐 Environment Variables & Secrets
+## Environment Variables & Secrets
 
 | Variable                                          | Purpose                          |
 | ------------------------------------------------- | -------------------------------- |
@@ -95,7 +99,7 @@ sidebar input. Provide it in **one** of these ways:
 > (only the `.example` templates are committed). The key is used only for live requests
 > and is never written to disk, logged, or retained after your session ends.
 
-### 🛡️ Production hardening
+### Production hardening
 
 This deployment ships with sensible defaults baked in:
 
@@ -107,7 +111,7 @@ This deployment ships with sensible defaults baked in:
 
 ---
 
-## 📄 License & Attribution
+## License & Attribution
 
 © 2026 False Dawn Industries. PhDMe is a creation of False Dawn Industries.
 This project is provided under the MIT License and retains required attribution for any third-party
